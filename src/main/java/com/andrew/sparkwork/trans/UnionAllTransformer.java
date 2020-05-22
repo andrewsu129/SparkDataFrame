@@ -1,5 +1,6 @@
 package com.andrew.sparkwork.trans;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.Iterator;
@@ -17,7 +18,7 @@ public class UnionAllTransformer extends AbstractTransformer
 	}
 	
 	@Override
-	public Dataset<Row> transform(Map<String, Dataset<Row>> map, SparkSession session) throws Exception {
+	public Map<String, Dataset<Row>> transform(Map<String, Dataset<Row>> map, SparkSession session, String stepName) throws Exception {
 
 		Iterator<Map.Entry<String, Dataset<Row>>> iterator = map.entrySet().iterator();
 		
@@ -26,8 +27,10 @@ public class UnionAllTransformer extends AbstractTransformer
 		while( iterator.hasNext() ) {
 			unioned = unioned.union(iterator.next().getValue());
 		}
-		
-		return unioned;
+
+		Map<String, Dataset<Row>> dataFrameMap = new HashMap<>();
+		dataFrameMap.put(stepName, unioned);
+		return dataFrameMap;
 	}
 
 }

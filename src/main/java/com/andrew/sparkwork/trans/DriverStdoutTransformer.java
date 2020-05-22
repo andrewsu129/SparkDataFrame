@@ -17,12 +17,20 @@ public class DriverStdoutTransformer extends ExternalOutputTransformer {
 	@Override
 	public void write(Dataset<Row> dataframe, SparkSession session) throws Exception {
 
+		int rowcount = Integer.valueOf(props.getProperty("rowcount", "0"));
 
-		List<Row> list = dataframe.toJavaRDD().collect();
-		
+		List<Row> list;
+
+		if( rowcount <= 0 ) {
+			list = dataframe.toJavaRDD().collect();
+		} else {
+			list = dataframe.takeAsList(rowcount);
+		}
+
 		for( Row row : list ) {
 			System.out.println( row.mkString("Row {", ",", "}"));
 		}
+
 	}
 
 }

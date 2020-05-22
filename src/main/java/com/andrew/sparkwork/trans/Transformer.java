@@ -8,7 +8,7 @@ import org.apache.spark.sql.SparkSession;
 
 public interface Transformer {
 
-	Dataset<Row> transform(Map<String, Dataset<Row>> map,  SparkSession session) throws Exception;
+	Map<String, Dataset<Row>> transform(Map<String, Dataset<Row>> map,  SparkSession session, String stepName) throws Exception;
 	
 	void setProperty(String key, String value);
 }

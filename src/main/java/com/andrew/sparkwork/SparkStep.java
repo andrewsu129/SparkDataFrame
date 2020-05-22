@@ -8,25 +8,17 @@ import java.util.Properties;
 import java.util.Set;
 import java.util.regex.Pattern;
 
+import com.andrew.sparkwork.trans.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
-import com.andrew.sparkwork.trans.DriverStdoutTransformer;
-import com.andrew.sparkwork.trans.JdbcInputTransformer;
-import com.andrew.sparkwork.trans.JdbcOutputTransformer;
-import com.andrew.sparkwork.trans.ReadHDFSTransformer;
-import com.andrew.sparkwork.trans.ReadHiveTransformer;
-import com.andrew.sparkwork.trans.SQLQueryTransformer;
-import com.andrew.sparkwork.trans.Transformer;
-import com.andrew.sparkwork.trans.WriteHDFSTransformer;
-import com.andrew.sparkwork.trans.WriteHiveTransformer;
 import com.andrew.sparkwork.utils.PropertyUtils;
 
 import com.google.common.collect.Maps;
 import com.google.common.collect.Sets;
 
 
-import jersey.repackaged.com.google.common.collect.Lists;
+import com.google.common.collect.Lists;
 
 import java.util.Map;
 
@@ -40,12 +32,12 @@ public class SparkStep {
 	
 	private String name;
 	private Properties props;
-	private Dataset<Row> dataFrame;
+	private Map<String, Dataset<Row>> dataFrameMap;
 	private boolean processed;
 	
 	private Transformer sourceTransformer;
 	private Transformer sinkTransformer;
-	
+
 	private List<String> loopValues;
 	private int loopCount = -1;
 	
@@ -56,7 +48,8 @@ public class SparkStep {
 		this.name = name;
 		this.props = props;
 		processed = false;
-		
+
+		dataFrameMap = new HashMap<>();
 		loadTransformer();
 	}
 
@@ -160,17 +153,18 @@ public class SparkStep {
 		}
 	}
 
-	public Dataset<Row> getDataFrame() {
-		return dataFrame;
+	public Map<String, Dataset<Row>> getDataFrameMap() {
+		return dataFrameMap;
 	}
 
-	public void setDataFrame(Dataset<Row> dataFrame) {
-		this.dataFrame = dataFrame;
+	public void setDataFrameMap(Map<String, Dataset<Row>> dataFrame) {
+		this.dataFrameMap = dataFrameMap;
 	}
 	
 	public boolean hasDataFrame() 
 	{
-		return dataFrame != null;
+		//return dataFrame != null;
+		return !dataFrameMap.isEmpty();
 	}
 	
 	public boolean doesLoop()
@@ -227,29 +221,27 @@ public class SparkStep {
 		
 		long start = System.currentTimeMillis();
 		
-		Dataset<Row> output = transformer.transform(inputs, session);
+		Map<String, Dataset<Row>> output = transformer.transform(inputs, session, getName());
 		
 		if( Boolean.parseBoolean(props.getProperty("cache", "false"))) {
-			output.cache();
+			output.forEach( (x,y) -> y.cache() ) ;
 		}
 		
 		if( this.doesCopyIntoParameter() ) {
-			this.copyParameter = this.getCopyParamterFor(output);
+			output.forEach( (x,y) -> this.getCopyParamterFor(y));
 		}
-		
-		this.setDataFrame(output);
-		//output.registerTempTable(getName());
-		output.createOrReplaceTempView(getName());
+
+		dataFrameMap = output;
+
+		dataFrameMap.forEach( (x,y) -> System.out.println("DATAFRAME NAME: " + x + "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"));
+		dataFrameMap.forEach( (x,y) -> y.createOrReplaceTempView(x) );
 		
 		
 		if( this.hasSinkTransformer() ) {
 			Transformer sinkTransformer = this.getSinkTransformer();
 			
-			Map<String, Dataset<Row>> dataFrames = new HashMap<String, Dataset<Row>>();
-			dataFrames.put(getName(), this.getDataFrame());
-			
 			start = System.currentTimeMillis();
-			sinkTransformer.transform(dataFrames, session);
+			sinkTransformer.transform(dataFrameMap, session, getName());
 			if(Boolean.parseBoolean(props.getProperty("parameter.application.debug", "false"))) {
 				long end = System.currentTimeMillis();
 				String title = "Time taken to execute: " + props.getProperty("sink") + " of " + name + " :";
@@ -265,10 +257,7 @@ public class SparkStep {
 			String transformerName = props.getProperty("source");
 			
 			Properties transformerProperties = PropertyUtils.propertiesForPrefix(props, "source");
-			
-/*			log.info( "THE TRANSFORMER NAME  IS: {}", transformerName);
-			log.info( "THE PROPERTIES IS: {}", transformerProperties);*/
-			
+
 			if( transformerName.equals("sql")) {
 				this.sourceTransformer = new SQLQueryTransformer(transformerProperties);
 			} else if( transformerName.equals("custom") ){
@@ -276,13 +265,23 @@ public class SparkStep {
 				Class<?> clazz = Class.forName(className);
 				
 				Constructor<?> constructor = clazz.getConstructor(Properties.class);
-				this.sourceTransformer = (Transformer) constructor.newInstance(transformerProperties);				
+				this.sourceTransformer = (Transformer) constructor.newInstance(transformerProperties);
 			} else if( transformerName.equals("hdfs") ){
+				this.sourceTransformer = new ReadHDFSTransformer(transformerProperties);
+			} else if( transformerName.equals("local") ){
 				this.sourceTransformer = new ReadHDFSTransformer(transformerProperties);
 			} else if( transformerName.equals("hive") ){
 				this.sourceTransformer = new ReadHiveTransformer(transformerProperties);
-			} else if( transformerName.equals("jdbc") ){
+			} else if( transformerName.equals("jdbc") ) {
 				this.sourceTransformer = new JdbcInputTransformer(transformerProperties);
+			} else if( transformerName.equals("dataframe_split")) {
+				this.sourceTransformer = new RandomSplitDataframeTransformer(transformerProperties);
+			} else if( transformerName.equals("mllib")) {
+				this.sourceTransformer = new MLLibTransformer(transformerProperties);
+			} else if( transformerName.equals("simpleRandomForest")) {
+				this.sourceTransformer = new SimpleRandomForestTransformer(transformerProperties);
+			} else if( transformerName.equals("simpleGradientBoostedTree")) {
+				this.sourceTransformer = new SimpleGradientBoostedTreeTransformer(transformerProperties);
 			} else {
 				throw new RuntimeException("Unsupported source transformer type: " + transformerName );
 			}
@@ -294,6 +293,8 @@ public class SparkStep {
 			
 			if( transformerName.equals("hdfs")) {
 				this.sinkTransformer = new WriteHDFSTransformer(transformerProperties);
+			} else if( transformerName.equals("local")) {
+				this.sinkTransformer = new WriteLocalFileTransformer(transformerProperties);
 			} else if( transformerName.equals("hive")) {
 				this.sinkTransformer = new WriteHiveTransformer(transformerProperties);
 			} else if( transformerName.equals("stdout")) {

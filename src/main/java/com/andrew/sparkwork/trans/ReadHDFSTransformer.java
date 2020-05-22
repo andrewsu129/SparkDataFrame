@@ -22,7 +22,7 @@ import org.apache.spark.sql.types.StructType;
 
 import com.andrew.sparkwork.utils.HDFSUtils;
 import com.andrew.sparkwork.utils.PropertyUtils;
-
+import org.apache.spark.sql.functions;
 
 public class ReadHDFSTransformer extends ExternalInputTransformer {
 
@@ -50,6 +50,9 @@ public class ReadHDFSTransformer extends ExternalInputTransformer {
 		case "text":
 			dataframe = readText(session);
 			break;
+		case "csv":
+			dataframe = readCsv(session).cache();
+			break;
 		case "json":
 			dataframe = readJson(session);
 			break;
@@ -74,6 +77,28 @@ public class ReadHDFSTransformer extends ExternalInputTransformer {
 		
 		Dataset<Row> dataFrame = session.read().json(inputPath);
 		return dataFrame;		
+	}
+
+	private Dataset<Row> readCsv( SparkSession session)
+	{
+		String rawPath = props.getProperty("path");
+		String inputPath = PropertyUtils.fillParameters(rawPath, props);
+		String delimiter = props.getProperty("delimiter", ",");
+
+		String withRowNumber = props.getProperty("withRowNumber", "false");
+
+		Dataset<Row> dataset = session.read().format("csv").option("header", "true").option("quote", "\"")
+					.option("delimiter", delimiter).option("mode", "DROPMALFORMED").option("inferSchema", "true")
+					.load(inputPath);
+
+		System.out.println("Schema: " + dataset.schema().toString() );
+
+		if( withRowNumber.equalsIgnoreCase("true")) {
+			return dataset.withColumn("rowId", functions.monotonically_increasing_id());
+		} else {
+			return dataset;
+		}
+
 	}
 
 	private Dataset<Row> readText(SparkSession session) throws Exception
@@ -134,7 +159,8 @@ public class ReadHDFSTransformer extends ExternalInputTransformer {
 		}
 		
 		final String delimitor = props.getProperty("delimiter");
-		
+		int skiplines = Integer.valueOf(props.getProperty("skiplines", "0"));
+
 		JavaRDD<Row> rowRecords = null;
 		
 		for( final String path : paths ) {
@@ -163,7 +189,7 @@ public class ReadHDFSTransformer extends ExternalInputTransformer {
 						case "integer":
 							listObjs.add(Integer.parseInt(fieldString));
 							break;
-						case "fload":
+						case "float":
 							listObjs.add(Float.parseFloat(fieldString));
 							break;
 						case "long":
@@ -192,8 +218,24 @@ public class ReadHDFSTransformer extends ExternalInputTransformer {
 			}
 			
 		}
-		
-		return session.createDataFrame(rowRecords, schema);
+
+		String withRowNumber = props.getProperty("withRowNumber", "false");
+
+		Dataset<Row> dataset = session.createDataFrame(rowRecords, schema);
+		if( skiplines != 0 ) {
+			dataset = dataset.withColumn("rowId", functions.monotonically_increasing_id()).filter( "rowId > " + skiplines );
+			if( withRowNumber.equalsIgnoreCase("true") ) {
+				return dataset;
+			} else {
+				return dataset.drop("rowId");
+			}
+		} else {
+			if (withRowNumber.equalsIgnoreCase("true")) {
+				return session.createDataFrame(rowRecords, schema).withColumn("rowId", functions.monotonically_increasing_id());
+			} else {
+				return session.createDataFrame(rowRecords, schema);
+			}
+		}
 	}
 	
 	private String getTextSchema() throws Exception

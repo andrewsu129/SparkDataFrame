@@ -20,7 +20,7 @@ public abstract class ExternalOutputTransformer  extends AbstractTransformer {
 	}
 
 	@Override
-	public Dataset<Row> transform(Map<String, Dataset<Row>> inputs, SparkSession session) throws Exception
+	public Map<String, Dataset<Row>> transform(Map<String, Dataset<Row>> inputs, SparkSession session, String stepName) throws Exception
 	{
 		if( inputs.size() != 1 ) {
 			throw new RuntimeException("Sink output transformer can have only one data frame ");

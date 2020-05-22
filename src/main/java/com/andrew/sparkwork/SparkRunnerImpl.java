@@ -229,7 +229,8 @@ public class SparkRunnerImpl {
 	{
 		Map<String, Dataset<Row>> dataFrameMap = new HashMap<>();
 		for( SparkStep step : steps ) {
-			dataFrameMap.put(step.getName(), step.getDataFrame());
+			//dataFrameMap.put(step.getName(), step.getDataFrame());
+			dataFrameMap.putAll(step.getDataFrameMap());
 		}
 		
 		return dataFrameMap;

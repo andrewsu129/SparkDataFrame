@@ -1,5 +1,6 @@
 package com.andrew.sparkwork.trans;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -19,15 +20,16 @@ public class SQLQueryTransformer extends AbstractTransformer
 	}
 
 	@Override
-	public Dataset<Row> transform(Map<String, Dataset<Row>> map, SparkSession session) throws Exception {
+	public Map<String, Dataset<Row>> transform(Map<String, Dataset<Row>> map, SparkSession session, String stepName) throws Exception {
 		String rawQuery = getRawQuery(props);
 		String finalQuery = PropertyUtils.fillParameters(rawQuery, props);
 		
 		System.out.println("The final Query is : " + finalQuery);
 		
-		Dataset<Row> input = session.sql(finalQuery);
+		Map<String, Dataset<Row>> dataFrameMap = new HashMap<>();
+		dataFrameMap.put(stepName, session.sql(finalQuery));
 		
-		return input;
+		return dataFrameMap;
 	}
 	
 	private String getRawQuery(Properties props) throws Exception

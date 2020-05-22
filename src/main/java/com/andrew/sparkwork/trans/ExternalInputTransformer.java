@@ -1,5 +1,6 @@
 package com.andrew.sparkwork.trans;
 
+import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 
@@ -21,7 +22,7 @@ public abstract class ExternalInputTransformer extends AbstractTransformer {
 	}
 	
 	@Override
-	public Dataset<Row> transform(Map<String, Dataset<Row>> inputs, SparkSession session) throws Exception
+	public Map<String, Dataset<Row>> transform(Map<String, Dataset<Row>> inputs, SparkSession session, String stepName) throws Exception
 	{
 		if( inputs != null ) {
 			log.info("Total inputs: {}", inputs.size());
@@ -30,8 +31,11 @@ public abstract class ExternalInputTransformer extends AbstractTransformer {
 		if( inputs.size() != 0 ) {
 			throw new RuntimeException("Souce transfomer can not have any dependencies");
 		}
-		
-		return read(session);
+
+
+		Map<String, Dataset<Row>> dataFrameMap = new HashMap<>();
+		dataFrameMap.put(stepName, read(session));
+		return dataFrameMap;
 	}
 
 	public abstract Dataset<Row> read( SparkSession session ) throws Exception;

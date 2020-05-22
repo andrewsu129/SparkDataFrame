@@ -17,7 +17,7 @@ public abstract class AbstractTransformer implements Transformer, Serializable {
 	}
 	
 	@Override
-	public abstract Dataset<Row> transform(Map<String, Dataset<Row>> map, SparkSession session) throws Exception;
+	public abstract Map<String,Dataset<Row>> transform(Map<String, Dataset<Row>> map, SparkSession session, String stepName) throws Exception;
 
 	@Override
 	public void setProperty(String key, String value) {
