@@ -80,7 +80,6 @@ public class SparkStep {
 
 	public void setProcessed(boolean processed) {
 		this.processed = processed;
-		System.out.println("Setting processed for " + getName() + " to " + processed);
 		log.info("Setting processed for {} to {}", getName(), processed);
 	}
 
@@ -233,7 +232,6 @@ public class SparkStep {
 
 		dataFrameMap = output;
 
-		dataFrameMap.forEach( (x,y) -> System.out.println("DATAFRAME NAME: " + x + "  !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"));
 		dataFrameMap.forEach( (x,y) -> y.createOrReplaceTempView(x) );
 		
 		
@@ -258,51 +256,75 @@ public class SparkStep {
 			
 			Properties transformerProperties = PropertyUtils.propertiesForPrefix(props, "source");
 
-			if( transformerName.equals("sql")) {
-				this.sourceTransformer = new SQLQueryTransformer(transformerProperties);
-			} else if( transformerName.equals("custom") ){
-				String className = props.getProperty("source.class");
-				Class<?> clazz = Class.forName(className);
-				
-				Constructor<?> constructor = clazz.getConstructor(Properties.class);
-				this.sourceTransformer = (Transformer) constructor.newInstance(transformerProperties);
-			} else if( transformerName.equals("hdfs") ){
-				this.sourceTransformer = new ReadHDFSTransformer(transformerProperties);
-			} else if( transformerName.equals("local") ){
-				this.sourceTransformer = new ReadHDFSTransformer(transformerProperties);
-			} else if( transformerName.equals("hive") ){
-				this.sourceTransformer = new ReadHiveTransformer(transformerProperties);
-			} else if( transformerName.equals("jdbc") ) {
-				this.sourceTransformer = new JdbcInputTransformer(transformerProperties);
-			} else if( transformerName.equals("dataframe_split")) {
-				this.sourceTransformer = new RandomSplitDataframeTransformer(transformerProperties);
-			} else if( transformerName.equals("mllib")) {
-				this.sourceTransformer = new MLLibTransformer(transformerProperties);
-			} else if( transformerName.equals("simpleRandomForest")) {
-				this.sourceTransformer = new SimpleRandomForestTransformer(transformerProperties);
-			} else if( transformerName.equals("simpleGradientBoostedTree")) {
-				this.sourceTransformer = new SimpleGradientBoostedTreeTransformer(transformerProperties);
-			} else {
-				throw new RuntimeException("Unsupported source transformer type: " + transformerName );
+			switch( transformerName ) {
+				case "sql":
+					this.sourceTransformer = new SQLQueryTransformer(transformerProperties);
+					break;
+				case "custom":
+					String className = props.getProperty("source.class");
+					Class<?> clazz = Class.forName(className);
+
+					Constructor<?> constructor = clazz.getConstructor(Properties.class);
+					this.sourceTransformer = (Transformer) constructor.newInstance(transformerProperties);
+					break;
+				case "hdfs":
+					this.sourceTransformer = new ReadHDFSTransformer(transformerProperties);
+					break;
+				case "local":
+					this.sourceTransformer = new ReadHDFSTransformer(transformerProperties);
+					break;
+				case "hive":
+					this.sourceTransformer = new ReadHiveTransformer(transformerProperties);
+					break;
+				case "jdbc":
+					this.sourceTransformer = new JdbcInputTransformer(transformerProperties);
+					break;
+				case "dataframe_split":
+					this.sourceTransformer = new RandomSplitDataframeTransformer(transformerProperties);
+					break;
+				case "mllib":
+					this.sourceTransformer = new MLLibTransformer(transformerProperties);
+					break;
+				case "simpleRandomForest":
+					this.sourceTransformer = new SimpleRandomForestTransformer(transformerProperties);
+					break;
+				case "simpleGradientBoostedTree":
+					this.sourceTransformer = new SimpleGradientBoostedTreeTransformer(transformerProperties);
+					break;
+				case "simpleNaiveBayes":
+					this.sourceTransformer = new SimpleNaiveBayesTransformer(transformerProperties);
+					break;
+				case "simpleLogisticRegression":
+					this.sourceTransformer = new SimpleLogisticRegressionTransformer(transformerProperties);
+					break;
+				default:
+					throw new RuntimeException("Unsupported source transformer type: " + transformerName );
 			}
+
 		}
 		
 		if( props.containsKey("sink")) {
 			String transformerName = props.getProperty("sink");
 			Properties transformerProperties = PropertyUtils.propertiesForPrefix(props, "sink");
-			
-			if( transformerName.equals("hdfs")) {
-				this.sinkTransformer = new WriteHDFSTransformer(transformerProperties);
-			} else if( transformerName.equals("local")) {
-				this.sinkTransformer = new WriteLocalFileTransformer(transformerProperties);
-			} else if( transformerName.equals("hive")) {
-				this.sinkTransformer = new WriteHiveTransformer(transformerProperties);
-			} else if( transformerName.equals("stdout")) {
-				this.sinkTransformer = new DriverStdoutTransformer(transformerProperties);
-			} else if( transformerName.equals("jdbc")) {
-				this.sinkTransformer = new JdbcOutputTransformer(transformerProperties);
-			} else {
-				throw new RuntimeException("Unsupported sink transformer type: " + transformerName);
+
+			switch( transformerName ) {
+				case "hdfs":
+					this.sinkTransformer = new WriteHDFSTransformer(transformerProperties);
+					break;
+				case "local":
+					this.sinkTransformer = new WriteLocalFileTransformer(transformerProperties);
+					break;
+				case "hive":
+					this.sinkTransformer = new WriteHiveTransformer(transformerProperties);
+					break;
+				case "stdout":
+					this.sinkTransformer = new DriverStdoutTransformer(transformerProperties);
+					break;
+				case "jdbc":
+					this.sinkTransformer = new JdbcOutputTransformer(transformerProperties);
+					break;
+				default:
+					throw new RuntimeException("Unsupported sink transformer type: " + transformerName);
 			}
 			
 		}

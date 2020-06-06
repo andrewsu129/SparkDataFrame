@@ -51,7 +51,7 @@ public class ReadHDFSTransformer extends ExternalInputTransformer {
 			dataframe = readText(session);
 			break;
 		case "csv":
-			dataframe = readCsv(session).cache();
+			dataframe = readCsv(session);
 			break;
 		case "json":
 			dataframe = readJson(session);
@@ -87,7 +87,7 @@ public class ReadHDFSTransformer extends ExternalInputTransformer {
 
 		String withRowNumber = props.getProperty("withRowNumber", "false");
 
-		Dataset<Row> dataset = session.read().format("csv").option("header", "true").option("quote", "\"")
+		Dataset<Row> dataset = session.read().format("csv").option("header", "true").option("quote", "\"").option("multiline",true).option("wholeFile", true).option("escape","\"")
 					.option("delimiter", delimiter).option("mode", "DROPMALFORMED").option("inferSchema", "true")
 					.load(inputPath);
 

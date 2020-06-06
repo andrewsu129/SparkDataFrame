@@ -49,7 +49,7 @@ public class SparkRunnerImpl {
 		
 		int numThreads = Runtime.getRuntime().availableProcessors();
 		ExecutorService tpool = Executors.newFixedThreadPool(numThreads);
-		System.out.println("SP>> Thread pool created with " + numThreads + " threads" );
+		//System.out.println("SP>> Thread pool created with " + numThreads + " threads" );
 		log.info("SP>> Thread pool created with " + numThreads + " threads" );
 		
 		while(!allStepProcessed(steps))
@@ -117,7 +117,7 @@ public class SparkRunnerImpl {
 			if( value.contains(dirPattern)) {
 				value = value.replaceAll(dirPattern, homeDir);
 				props.setProperty(prop, value);
-				System.out.println("SPARK>>>> User Home Directory that will be used for getting the file is :" + value);
+				//System.out.println("SPARK>>>> User Home Directory that will be used for getting the file is :" + value);
 			}
 		}
 		

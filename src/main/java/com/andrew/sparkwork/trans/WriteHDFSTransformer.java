@@ -58,39 +58,39 @@ public class WriteHDFSTransformer extends ExternalOutputTransformer
 	private void writeText(Dataset<Row> dataframe) throws Exception
 	{
 		JavaRDD<Row> rawRecords = dataframe.toJavaRDD();
-		final String delimiter = props.getProperty("delimiter");
-		
-	
+		final String delimiter = props.getProperty("delimiter", ",");
+
 		JavaRDD<String> stringRecords = rawRecords.map(new Function<Row, String>() {
 
 			StringBuilder text = new StringBuilder();
-			
+
 			@Override
 			public String call(Row arg0) throws Exception {
-				
+
 				text.setLength(0);
-				
+
 				for( String fieldName : arg0.schema().fieldNames() ) {
 					if( !arg0.isNullAt(arg0.fieldIndex(fieldName))) {
 						String valueString = arg0.get(arg0.fieldIndex(fieldName)).toString();
 						text.append(valueString);
 					}
-					
+
 					text.append(resolveDelimiter(delimiter));
 				}
-				
+
 				if( text.length() > delimiter.length() ) {
 					text.setLength(text.length() - resolveDelimiter(delimiter).length());
 				}
-				
+
 				return text.toString();
 			}
-			
+
 		});
 		
 		String rawPath = props.getProperty("path");
-		String outputPath = PropertyUtils.fillParameters(rawPath, props) ;	
-		
+		String outputPath = PropertyUtils.fillParameters(rawPath, props) ;
+		//dataframe.write().format("csv").option("delimiter", delimiter).mode("Overwrite").save(rawPath);
+
 		HDFSUtils.removeHDFSPath(outputPath);
 		
 		stringRecords.saveAsTextFile(outputPath);
